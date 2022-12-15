@@ -147,7 +147,7 @@ def model_4(x_train, x_test, y_train, y_test):
                             name='targets', to_one_hot=True, n_classes=6)
     model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
     print("Start training...")
-    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=5, show_metric=True,
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=20, show_metric=True,
               validation_set=({'input': x_test}, {'targets': y_test}))
     print("Finished...")
     return model
