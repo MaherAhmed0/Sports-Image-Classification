@@ -15,6 +15,7 @@ import tflearn
 from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.estimator import regression
+import Models
 
 
 def preprocessed_train_data(data, path):
@@ -127,11 +128,7 @@ for img_data, img_label in Train_Data:
     X_Train_Data.append(img_data)
     Y_Train_Data.append(img_label)
 
-show_train_image(X_Train_Data, Y_Train_Data, 0)
-
-# print(Train_Data)
-# print(X_Train_Data)
-# print(Y_Train_Data)
+# show_train_image(X_Train_Data, Y_Train_Data, 0)
 
 pickle_out = open("X_Train", "wb")
 pickle.dump(X_Train_Data, pickle_out)
@@ -149,38 +146,7 @@ Y_Train = retrieve_pickled_data("Y_Train")
 x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8)
 
 # model
-conv_input = input_data(shape=[None, 50, 50, 3], name='input')
-
-conv1 = conv_2d(conv_input, 32, 5, activation='relu')
-pool1 = max_pool_2d(conv1, 5)
-
-conv2 = conv_2d(pool1, 64, 5, activation='relu')
-pool2 = max_pool_2d(conv2, 5)
-
-conv3 = conv_2d(pool2, 128, 5, activation='relu')
-pool3 = max_pool_2d(conv3, 5)
-
-conv4 = conv_2d(pool3, 64, 5, activation='relu')
-pool4 = max_pool_2d(conv4, 5)
-
-conv5 = conv_2d(pool4, 32, 5, activation='relu')
-pool5 = max_pool_2d(conv5, 5)
-
-fully_layer = fully_connected(pool5, 1024, activation='relu')
-
-cnn_layers = fully_connected(fully_layer, 6, activation='softmax')
-
-cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
-                        name='targets', to_one_hot=True, n_classes=6)
-Model_1 = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
-# print(len(x_train))
-# print(len(y_train))
-# print(len(x_test))
-# print(len(y_test))
-
-Model_1.fit({'input': x_train}, {'targets': y_train}, n_epoch=10,
-            validation_set=({'input': x_test}, {'targets': y_test}))
-
+Model_ = Models.model_1(x_train, x_test, y_train, y_test)
 
 Test_Data_Path = "D:\\Courses\\Neural Network and Deep Learning\\Project\\Sports Image Classification\\test"
 Test_Data = []
@@ -191,7 +157,7 @@ Test_images_labels = []
 preprocessed_test_data(Test_Data, Test_Data_Path, Test_images_Name)
 # show_test_image(Test_Data, 0)
 
-test_model(Model_1, Test_Data, Test_images_labels)
+test_model(Model_, Test_Data, Test_images_labels)
 print("------------------------------")
 print(Test_images_Name)
 print("------------------------------")
