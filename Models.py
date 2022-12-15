@@ -117,3 +117,37 @@ def model_3(x_train, x_test, y_train, y_test):
               validation_set=({'input': x_test}, {'targets': y_test}))
     print("Finished...")
     return model
+
+
+def model_4(x_train, x_test, y_train, y_test):
+    conv_input = input_data(shape=[None, 50, 50, 3], name='input')
+
+    conv1 = conv_2d(conv_input, 96, 11, activation='relu')
+    conv2 = conv_2d(conv1, 256, 5, activation='relu')
+
+    pool1 = max_pool_2d(conv2, 3)
+
+    conv3 = conv_2d(pool1, 384, 3, activation='relu')
+
+    pool2 = max_pool_2d(conv3, 3)
+
+    conv4 = conv_2d(pool2, 384, 3, activation='relu')
+    conv5 = conv_2d(conv4, 256, 3, activation='relu')
+
+    pool3 = max_pool_2d(conv5, 3)
+
+    fully_layer1 = fully_connected(pool3, 4096, activation='relu')
+    fully_layer2 = fully_connected(fully_layer1, 4096, activation='relu')
+    fully_layer3 = fully_connected(fully_layer2, 1000, activation='relu')
+
+    cnn_layers = fully_connected(fully_layer3, 6, activation='softmax')
+
+    cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
+                            metric=Accuracy(),
+                            name='targets', to_one_hot=True, n_classes=6)
+    model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
+    print("Start training...")
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=5, show_metric=True,
+              validation_set=({'input': x_test}, {'targets': y_test}))
+    print("Finished...")
+    return model

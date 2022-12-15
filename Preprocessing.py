@@ -115,7 +115,7 @@ def generate_csv(classified_images):
         write.writerows(classified_images)
 
 
-Train_Data_Path = "D:\\Courses\\Neural Network and Deep Learning\\Project\\Sports Image Classification\\try"
+Train_Data_Path = "D:\\Courses\\Neural Network and Deep Learning\\Project\\Sports-Image-Classification\\try"
 CATEGORIES = ["Basketball", "Football", "Rowing", "Swimming", "Tennis", "Yoga"]
 Train_Data = []
 
@@ -148,7 +148,7 @@ x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size
 # model
 Model_ = Models.model_1(x_train, x_test, y_train, y_test)
 
-Test_Data_Path = "D:\\Courses\\Neural Network and Deep Learning\\Project\\Sports Image Classification\\test"
+Test_Data_Path = "D:\\Courses\\Neural Network and Deep Learning\\Project\\Sports-Image-Classification\\test"
 Test_Data = []
 Test_images_Name = []
 Test_images_labels = []
