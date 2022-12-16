@@ -1,3 +1,4 @@
+import tensorflow as tf
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
@@ -8,14 +9,26 @@ import random
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import pickle
-from PIL import Image
-import re
-import tensorflow as tf
-import tflearn
-from tflearn.layers.conv import conv_2d, max_pool_2d
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.estimator import regression
 import Models
+
+current_dir = os.getcwd()
+
+basketball = 'Basketball'
+football = 'Football'
+rowing = 'Rowing'
+swimming = 'Swimming'
+tennis = 'Tennis'
+yoga = 'Yoga'
+
+CATEGORIES = [basketball, football, rowing, swimming, tennis, yoga]
+COUNTS = {
+    basketball: 50,  # 196,
+    football: 50,    # 400,
+    rowing: 50,      # 202,
+    swimming: 50,    # 240,
+    tennis: 50,      # 185,
+    yoga: 50         # 458,
+}
 
 
 def preprocessed_train_data(data, path):
@@ -28,7 +41,7 @@ def preprocessed_train_data(data, path):
         for img in tqdm(os.listdir(data_path)):
             img_array = cv2.imread(os.path.join(data_path, img))
 
-            ### Preprocessing ###
+            # Preprocessing #
             ###############################
             # convert png to jpg
             if imghdr.what(os.path.join(data_path, img)) == 'png':
@@ -83,8 +96,11 @@ def test_model(model, test_data, labels):
     for img in test_data:
         print("image:", c)
         prediction = model.predict([img])[0]
-        print(f'Basketball: {prediction[0]*100:.2f}%, Football: {prediction[1]*100:.2f}%, Rowing: {prediction[2]*100:.2f}%, '
-              f'Swimming: {prediction[3]*100:.2f}%, Tennis: {prediction[4]*100:.2f}%, Yoga:{prediction[5]*100:.2f}%')
+        print(
+            f'Basketball: {prediction[0] * 100:.2f}%, Football: {prediction[1] * 100:.2f}%, '
+            f'Rowing: {prediction[2] * 100:.2f}%, Swimming: {prediction[3] * 100:.2f}%, '
+            f'Tennis: {prediction[4] * 100:.2f}%, Yoga:{prediction[5] * 100:.2f}%'
+        )
         labels.append(prediction.argmax())
         c += 1
 
@@ -115,12 +131,29 @@ def generate_csv(classified_images):
         write.writerows(classified_images)
 
 
-current_dir = os.getcwd()
+def augmentation(data: list):
+    for entry in data:  # x = [image, Tennis]
+        entry: list
+        # print(entry[1])
+        label = CATEGORIES[entry[1]]
+        print(label)
+        img = entry[0]
+        # print(img)
+        # print(COUNTS[label])
+        if COUNTS[label] < 55:
+            r = random.randint(1, 3)
+            aug = tf.image.rot90(img, r)
+            data.append([aug, entry[1]])
+            aug = tf.image.random_brightness(img, 0.5)
+            data.append([aug, entry[1]])
+            COUNTS[label] += 2
+
+
 Train_Data_Path = f"{current_dir}\\try"
-CATEGORIES = ["Basketball", "Football", "Rowing", "Swimming", "Tennis", "Yoga"]
 Train_Data = []
 
 preprocessed_train_data(Train_Data, Train_Data_Path)
+augmentation(Train_Data)
 random.shuffle(Train_Data)
 X_Train_Data = []
 Y_Train_Data = []
@@ -132,7 +165,7 @@ for img_data, img_label in Train_Data:
 # show_train_image(X_Train_Data, Y_Train_Data, 0)
 
 pickle_out = open("X_Train", "wb")
-pickle.dump(X_Train_Data, pickle_out)
+# pickle.dump(X_Train_Data, pickle_out)
 pickle_out.close()
 del X_Train_Data
 
@@ -147,7 +180,7 @@ Y_Train = retrieve_pickled_data("Y_Train")
 x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8)
 
 # model
-Model_ = Models.model_4(x_train, x_test, y_train, y_test)
+Model_ = Models.model_3(x_train, x_test, y_train, y_test)
 
 Test_Data_Path = f"{current_dir}\\test"
 Test_Data = []
