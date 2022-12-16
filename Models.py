@@ -1,16 +1,3 @@
-import numpy as np
-import csv
-import matplotlib.pyplot as plt
-import cv2
-import os
-import imghdr
-import random
-from sklearn.model_selection import train_test_split
-from tqdm import tqdm
-import pickle
-from PIL import Image
-import re
-import tensorflow as tf
 import tflearn
 from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.core import input_data, dropout, fully_connected
@@ -106,14 +93,15 @@ def model_3(x_train, x_test, y_train, y_test):
     fully_layer1 = fully_connected(pool3, 512, activation='relu')
     fully_layer3 = fully_connected(fully_layer1, 1024, activation='relu')
 
-    cnn_layers = fully_connected(fully_layer3, 6, activation='softmax')
+    final_layer = dropout(fully_layer3, 0.5)
+    cnn_layers = fully_connected(final_layer, 6, activation='softmax')
 
     cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
                             metric=Accuracy(),
                             name='targets', to_one_hot=True, n_classes=6)
     model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
     print("Start training...")
-    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=5, show_metric=True,
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=50, show_metric=True,
               validation_set=({'input': x_test}, {'targets': y_test}))
     print("Finished...")
     return model
@@ -140,14 +128,16 @@ def model_4(x_train, x_test, y_train, y_test):
     fully_layer2 = fully_connected(fully_layer1, 4096, activation='relu')
     fully_layer3 = fully_connected(fully_layer2, 1000, activation='relu')
 
-    cnn_layers = fully_connected(fully_layer3, 6, activation='softmax')
+    final_layer = dropout(fully_layer3, 0.5)
+
+    cnn_layers = fully_connected(final_layer, 6, activation='softmax')
 
     cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
                             metric=Accuracy(),
                             name='targets', to_one_hot=True, n_classes=6)
     model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
     print("Start training...")
-    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=20, show_metric=True,
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=100, show_metric=True,
               validation_set=({'input': x_test}, {'targets': y_test}))
     print("Finished...")
     return model
