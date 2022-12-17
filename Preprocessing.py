@@ -22,12 +22,12 @@ yoga = 'Yoga'
 
 CATEGORIES = [basketball, football, rowing, swimming, tennis, yoga]
 COUNTS = {
-    basketball: 50,  # 196,
-    football: 50,    # 400,
-    rowing: 50,      # 202,
-    swimming: 50,    # 240,
-    tennis: 50,      # 185,
-    yoga: 50         # 458,
+    basketball: 185,
+    football: 185,
+    rowing: 185,
+    swimming: 185,
+    tennis: 185,
+    yoga: 185,
 }
 
 
@@ -46,14 +46,14 @@ def preprocessed_train_data(data, path):
             # convert png to jpg
             if imghdr.what(os.path.join(data_path, img)) == 'png':
                 cv2.imwrite(os.path.join(data_path, img), img_array, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-                os.remove(os.path.join(data_path, img))
+                # os.remove(os.path.join(data_path, img))
                 converted_images += 1
 
             # BGR to RGB
             img_array = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
 
             # Resize
-            img_array = cv2.resize(img_array, (50, 50))
+            img_array = cv2.resize(img_array, (227, 227))
             # print("Shape: ", img_array.shape)
 
             # Smoothing
@@ -83,7 +83,9 @@ def preprocessed_test_data(data, path, image_name):
             os.remove(os.path.join(path, img))
             converted_images += 1
         test_img_array = cv2.cvtColor(test_img_array, cv2.COLOR_BGR2RGB)
-        test_img_array = cv2.resize(test_img_array, (50, 50))
+        test_img_array = cv2.resize(test_img_array, (227, 227))
+        # Normalization
+        test_img_array = (test_img_array - np.min(test_img_array)) / (np.max(test_img_array) - np.min(test_img_array))
         data.append(test_img_array)
     print("Done.")
     print(converted_images, "images got converted from PNG to JPG")
@@ -140,7 +142,7 @@ def augmentation(data: list):
         img = entry[0]
         # print(img)
         # print(COUNTS[label])
-        if COUNTS[label] < 55:
+        if COUNTS[label] < 500:
             r = random.randint(1, 3)
             # print('img: ', img)
             aug = tf.image.rot90(img, r)
@@ -157,7 +159,7 @@ Train_Data_Path = f"{current_dir}\\try"
 Train_Data = []
 
 preprocessed_train_data(Train_Data, Train_Data_Path)
-augmentation(Train_Data)
+# augmentation(Train_Data)
 random.shuffle(Train_Data)
 X_Train_Data = []
 Y_Train_Data = []
@@ -166,7 +168,7 @@ for img_data, img_label in Train_Data:
     X_Train_Data.append(img_data)
     Y_Train_Data.append(img_label)
 
-# show_train_image(X_Train_Data, Y_Train_Data, 0)
+show_train_image(X_Train_Data, Y_Train_Data, 0)
 
 pickle_out = open("X_Train", "wb")
 pickle.dump(X_Train_Data, pickle_out)
@@ -184,7 +186,7 @@ Y_Train = retrieve_pickled_data("Y_Train")
 x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8)
 
 # model
-Model_ = Models.model_4(x_train, x_test, y_train, y_test)
+Model = Models.model_5(x_train, x_test, y_train, y_test)
 
 Test_Data_Path = f"{current_dir}\\test"
 Test_Data = []
@@ -195,7 +197,7 @@ Test_images_labels = []
 preprocessed_test_data(Test_Data, Test_Data_Path, Test_images_Name)
 # show_test_image(Test_Data, 0)
 
-test_model(Model_, Test_Data, Test_images_labels)
+test_model(Model, Test_Data, Test_images_labels)
 print("------------------------------")
 print(Test_images_Name)
 print("------------------------------")
@@ -209,3 +211,5 @@ pickle_out = open("Test images", "wb")
 pickle.dump(Test_Data, pickle_out)
 pickle_out.close()
 del Test_Data
+
+Model.save('model.tfl')
