@@ -186,7 +186,7 @@ ax = fig.add_subplot(111)
 ax.imshow(test_img,cmap='gray')
 print(f"basketball: {prediction[0]}, football: {prediction[1]}, Rowing: {prediction[2]}, swimming: {prediction[3]},tennis: {prediction[4]},yoga:{prediction[5]}")
 plt.show()
-
-# print(X_Train)
+#s
+# print(X_Train)ss
 # print(Y_Train)
 
