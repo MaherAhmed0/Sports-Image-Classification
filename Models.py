@@ -172,8 +172,9 @@ def model_5(x_train, x_test, y_train, y_test):
     drop2 = dropout(fully_layer2, 0.5)
 
     fully_layer3 = fully_connected(drop2, 1000, activation='relu')
+    drop3 = dropout(fully_layer3, 0.5)
 
-    cnn_layers = fully_connected(fully_layer3, 6, activation='softmax')
+    cnn_layers = fully_connected(drop3, 6, activation='softmax')
 
     cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
                             metric=Accuracy(),
@@ -232,4 +233,39 @@ def vgg_16(x_train, x_test, y_train, y_test):
 
     print("Finished...")
 
+    return model
+
+
+def model_6(x_train, x_test, y_train, y_test):
+    conv_input = input_data(shape=[None, 100, 100, 3], name='input')
+
+    conv1 = conv_2d(conv_input, 48, 3, activation='relu')
+
+    pool1 = max_pool_2d(conv1, 2, strides=2)
+
+    conv2 = conv_2d(pool1, 48, 3, activation='relu', strides=2)
+
+    pool2 = max_pool_2d(conv2, 2, strides=2)
+
+    conv3 = conv_2d(pool2, 32, 3, activation='relu', strides=2)
+
+    pool3 = max_pool_2d(conv3, 2, strides=2)
+
+    flat = flatten(pool3)
+
+    fully_layer1 = fully_connected(flat, 128, activation='relu')
+    D1 = dropout(fully_layer1, 0,5)
+    fully_layer2 = fully_connected(D1, 64, activation='relu')
+    D2 = dropout(fully_layer2, 0,5)
+
+    cnn_layers = fully_connected(D2, 6, activation='softmax')
+
+    cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
+                            metric=Accuracy(),
+                            name='targets', to_one_hot=True, n_classes=6)
+    model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
+    print("Start training...")
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=50, show_metric=True, batch_size=32,
+              validation_set=({'input': x_test}, {'targets': y_test}))
+    print("Finished...")
     return model

@@ -22,12 +22,12 @@ yoga = 'Yoga'
 
 CATEGORIES = [basketball, football, rowing, swimming, tennis, yoga]
 COUNTS = {
-    basketball: 185,
-    football: 185,
-    rowing: 185,
-    swimming: 185,
+    basketball: 196,
+    football: 400,
+    rowing: 202,
+    swimming: 240,
     tennis: 185,
-    yoga: 185,
+    yoga: 458,
 }
 
 
@@ -53,7 +53,7 @@ def preprocessed_train_data(data, path):
             img_array = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
 
             # Resize
-            img_array = cv2.resize(img_array, (227, 227))
+            img_array = cv2.resize(img_array, (100, 100))
             # print("Shape: ", img_array.shape)
 
             # Smoothing
@@ -83,7 +83,7 @@ def preprocessed_test_data(data, path, image_name):
             os.remove(os.path.join(path, img))
             converted_images += 1
         test_img_array = cv2.cvtColor(test_img_array, cv2.COLOR_BGR2RGB)
-        test_img_array = cv2.resize(test_img_array, (227, 227))
+        test_img_array = cv2.resize(test_img_array, (100, 100))
         # Normalization
         test_img_array = (test_img_array - np.min(test_img_array)) / (np.max(test_img_array) - np.min(test_img_array))
         data.append(test_img_array)
@@ -136,18 +136,12 @@ def generate_csv(classified_images):
 def augmentation(data: list):
     for entry in data:  # x = [image, Tennis]
         entry: list
-        # print(entry[1])
         label = CATEGORIES[entry[1]]
-        # print(label)
         img = entry[0]
-        # print(img)
-        # print(COUNTS[label])
-        if COUNTS[label] < 500:
+        if COUNTS[label] < 460:
             r = random.randint(1, 3)
-            # print('img: ', img)
             aug = tf.image.rot90(img, r)
             aug = tf.compat.v1.Session().run(aug)
-            # print('aug: ', aug)
             data.append([aug, entry[1]])
             aug = tf.image.random_brightness(img, 0.5)
             aug = tf.compat.v1.Session().run(aug)
@@ -159,8 +153,9 @@ Train_Data_Path = f"{current_dir}\\try"
 Train_Data = []
 
 preprocessed_train_data(Train_Data, Train_Data_Path)
-# augmentation(Train_Data)
-random.shuffle(Train_Data)
+augmentation(Train_Data)
+# random.shuffle(Train_Data)
+
 X_Train_Data = []
 Y_Train_Data = []
 
@@ -168,7 +163,7 @@ for img_data, img_label in Train_Data:
     X_Train_Data.append(img_data)
     Y_Train_Data.append(img_label)
 
-show_train_image(X_Train_Data, Y_Train_Data, 0)
+# show_train_image(X_Train_Data, Y_Train_Data, 0)
 
 pickle_out = open("X_Train", "wb")
 pickle.dump(X_Train_Data, pickle_out)
@@ -183,19 +178,18 @@ del Y_Train_Data
 X_Train = retrieve_pickled_data("X_Train")
 Y_Train = retrieve_pickled_data("Y_Train")
 
-x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8)
+x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8, shuffle=True)
 
 # model
-Model = Models.model_5(x_train, x_test, y_train, y_test)
+Model = Models.model_6(x_train, x_test, y_train, y_test)
+Model.save('model.tfl')
 
-Test_Data_Path = f"{current_dir}\\test"
+Test_Data_Path = f"{current_dir}\\small_test"
 Test_Data = []
 Test_images_Name = []
 Test_images_labels = []
-# Test = retrieve_pickled_data("Test images")
 
 preprocessed_test_data(Test_Data, Test_Data_Path, Test_images_Name)
-# show_test_image(Test_Data, 0)
 
 test_model(Model, Test_Data, Test_images_labels)
 print("------------------------------")
@@ -211,5 +205,4 @@ pickle_out = open("Test images", "wb")
 pickle.dump(Test_Data, pickle_out)
 pickle_out.close()
 del Test_Data
-
-Model.save('model.tfl')
+# Test = retrieve_pickled_data("Test images")
