@@ -1,7 +1,7 @@
 import os
-
 import tflearn
-from tflearn.layers.conv import conv_2d, max_pool_2d, batch_normalization
+from tflearn import merge
+from tflearn.layers.conv import conv_2d, max_pool_2d, batch_normalization, avg_pool_2d
 from tflearn.layers.normalization import local_response_normalization
 from tflearn.layers.core import input_data, dropout, fully_connected, flatten
 from tflearn.layers.estimator import regression
@@ -42,35 +42,45 @@ def model_1(x_train, x_test, y_train, y_test):
 
 
 def model_2(x_train, x_test, y_train, y_test):
-    conv_input = input_data(shape=[None, 50, 50, 3], name='input')
+    conv_input = input_data(shape=[None, 100, 100, 3], name='input')
 
-    conv1 = conv_2d(conv_input, 30, 3, activation='relu')
+    conv1 = conv_2d(conv_input, 32, 3, activation='relu')
     pool1 = max_pool_2d(conv1, 2)
 
-    conv2 = conv_2d(pool1, 30, 3, activation='relu')
+    conv2 = conv_2d(pool1, 32, 3, activation='relu')
     pool2 = max_pool_2d(conv2, 2)
 
-    conv3 = conv_2d(pool2, 40, 3, activation='relu')
+    conv3 = conv_2d(pool2, 48, 3, activation='relu')
     pool3 = max_pool_2d(conv3, 2)
 
-    conv4 = conv_2d(pool3, 40, 3, activation='relu')
+    conv4 = conv_2d(pool3, 48, 3, activation='relu')
     pool4 = max_pool_2d(conv4, 2)
 
-    conv5 = conv_2d(pool4, 40, 3, activation='relu')
+    conv5 = conv_2d(pool4, 48, 3, activation='relu')
     pool5 = max_pool_2d(conv5, 2)
 
-    conv6 = conv_2d(pool5, 30, 3, activation='relu')
+    conv6 = conv_2d(pool5, 32, 3, activation='relu')
     pool6 = max_pool_2d(conv6, 2)
+    flat1 = flatten(pool6)
 
-    cnn_layers = fully_connected(pool6, 6, activation='softmax')
+    fully_layer = fully_connected(flat1, 128, activation='relu')
+    drop = dropout(fully_layer, 0.5)
+
+    full_layer1 = fully_connected(drop, 64, activation='relu')
+    drop1 = dropout(full_layer1, 0.5)
+
+    cnn_layers = fully_connected(drop1, 6, activation='softmax')
+
     cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
                             metric=Accuracy(),
                             name='targets', to_one_hot=True, n_classes=6)
 
-    model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
+    model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3, best_checkpoint_path='Best')
     print("Start training...")
-    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=5, show_metric=True,
+
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=50, show_metric=True,
               validation_set=({'input': x_test}, {'targets': y_test}))
+
     print("Finished...")
     return model
 
@@ -254,11 +264,65 @@ def model_6(x_train, x_test, y_train, y_test):
     flat = flatten(pool3)
 
     fully_layer1 = fully_connected(flat, 128, activation='relu')
-    D1 = dropout(fully_layer1, 0,5)
+    D1 = dropout(fully_layer1, 0.5)
     fully_layer2 = fully_connected(D1, 64, activation='relu')
-    D2 = dropout(fully_layer2, 0,5)
+    D2 = dropout(fully_layer2, 0.5)
 
     cnn_layers = fully_connected(D2, 6, activation='softmax')
+
+    cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
+                            metric=Accuracy(),
+                            name='targets', to_one_hot=True, n_classes=6)
+    model = tflearn.DNN(cnn_layers, tensorboard_dir='log', tensorboard_verbose=3)
+    print("Start training...")
+    model.fit({'input': x_train}, {'targets': y_train}, n_epoch=50, show_metric=True, batch_size=32,
+              validation_set=({'input': x_test}, {'targets': y_test}))
+    print("Finished...")
+    return model
+
+
+def inception_v3(x_train, x_test, y_train, y_test):
+    conv_input = input_data(shape=[None, 100, 100, 3], name='input')
+
+    conv1 = conv_2d(conv_input, 32, 3, activation='relu', strides=2)
+    conv2 = conv_2d(conv1, 32, 3, activation='relu', strides=1)
+    conv3 = conv_2d(conv2, 64, 3, activation='relu', strides=1)
+
+    pool1 = max_pool_2d(conv3, 3, strides=2)
+
+    conv4 = conv_2d(pool1, 80, 1, activation='relu', strides=1)
+    conv5 = conv_2d(conv4, 192, 3, activation='relu', strides=1)
+
+    pool2 = max_pool_2d(conv5, 3, strides=2)
+
+    B1_conv1 = conv_2d(pool2, 64, 1, activation='relu')
+    B1_conv2 = conv_2d(B1_conv1, 96, 3, activation='relu')
+    B1_conv3 = conv_2d(B1_conv2, 96, 3, activation='relu')
+
+    B2_conv1 = conv_2d(pool2, 48, 1, activation='relu')
+    B2_conv2 = conv_2d(B2_conv1, 64, 3, activation='relu')
+
+    # B3_ava = avg_pool_2d(pool2, 3)
+    # B3_conv = conv_2d(B3_ava, 48, 32, 1, activation='relu')
+
+    B4_conv = conv_2d(pool2, 64, 1, activation='relu')
+
+    merge_1 = merge([B1_conv3, B2_conv2, B4_conv], 'concat', axis=3)
+
+    RB1_conv1 = conv_2d(merge_1, 64, 1, activation='relu')
+    RB1_conv2 = conv_2d(RB1_conv1, 96, 1, activation='relu')
+    RB1_conv3 = conv_2d(RB1_conv2, 96, 1, activation='relu', strides=2)
+
+    RB2_conv = conv_2d(merge_1, 96, 1, activation='relu', strides=2)
+
+    RB3_pool = max_pool_2d(merge_1, 3, strides=2)
+
+    merge_2 = merge([RB1_conv3, RB2_conv, RB3_pool], 'concat', axis=3)
+
+    fully_layer = fully_connected(merge_2, 64, activation='relu')
+    drop = dropout(fully_layer, 0.5)
+
+    cnn_layers = fully_connected(drop, 6, activation='softmax')
 
     cnn_layers = regression(cnn_layers, optimizer='adam', learning_rate=0.001, loss='categorical_crossentropy',
                             metric=Accuracy(),

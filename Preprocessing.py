@@ -138,14 +138,16 @@ def augmentation(data: list):
         entry: list
         label = CATEGORIES[entry[1]]
         img = entry[0]
-        if COUNTS[label] < 460:
+        if COUNTS[label] < 480:
             r = random.randint(1, 3)
             aug = tf.image.rot90(img, r)
             aug = tf.compat.v1.Session().run(aug)
             data.append([aug, entry[1]])
+
             aug = tf.image.random_brightness(img, 0.5)
             aug = tf.compat.v1.Session().run(aug)
             data.append([aug, entry[1]])
+
             COUNTS[label] += 2
 
 
@@ -181,8 +183,8 @@ Y_Train = retrieve_pickled_data("Y_Train")
 x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8, shuffle=True)
 
 # model
-Model = Models.model_6(x_train, x_test, y_train, y_test)
-Model.save('model.tfl')
+Model = Models.inception_v3(x_train, x_test, y_train, y_test)
+Model.save('inception_v3.tfl')
 
 Test_Data_Path = f"{current_dir}\\small_test"
 Test_Data = []
