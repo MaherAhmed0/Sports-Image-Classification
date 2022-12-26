@@ -6,6 +6,7 @@ import cv2
 import os
 import imghdr
 import random
+import tflearn
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import pickle
@@ -31,22 +32,21 @@ COUNTS = {
 }
 
 
-def preprocessed_train_data(data, path):
+def preprocessed_train_data(path):
+    data = []
     converted_images = 0
     for category in CATEGORIES:
         data_path = os.path.join(path, category)
         label = CATEGORIES.index(category)
         print("loading", category, "images and labeling them")
-        # c = 0
         for img in tqdm(os.listdir(data_path)):
             img_array = cv2.imread(os.path.join(data_path, img))
 
-            # Preprocessing #
+            ### Preprocessing ###
             ###############################
             # convert png to jpg
             if imghdr.what(os.path.join(data_path, img)) == 'png':
                 cv2.imwrite(os.path.join(data_path, img), img_array, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-                # os.remove(os.path.join(data_path, img))
                 converted_images += 1
 
             # BGR to RGB
@@ -54,10 +54,6 @@ def preprocessed_train_data(data, path):
 
             # Resize
             img_array = cv2.resize(img_array, (100, 100))
-            # print("Shape: ", img_array.shape)
-
-            # Smoothing
-            # img_array = cv2.GaussianBlur(img_array, (3, 3), 0)
 
             # Normalization
             img_array = (img_array - np.min(img_array)) / (np.max(img_array) - np.min(img_array))
@@ -65,46 +61,91 @@ def preprocessed_train_data(data, path):
             data.append([img_array, label])
         print("Done for", category, "images.")
         print("------------------------------")
-        # break
     print(converted_images, "images got converted from PNG to JPG")
     print("Total train images:", len(data))
     print("------------------------------")
+    return data
 
 
-def preprocessed_test_data(data, path, image_name):
+def preprocessed_test_data(path):
+    data = []
+    image_name = []
     converted_images = 0
     print("loading test images")
     for img in os.listdir(path):
         image_name.append(img)
-        # print(img)
         test_img_array = cv2.imread(os.path.join(path, img))
+        ### Preprocessing ###
+        ###############################
+        # convert png to jpg
         if imghdr.what(os.path.join(path, img)) == 'png':
             cv2.imwrite(os.path.join(path, img), test_img_array, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
             os.remove(os.path.join(path, img))
             converted_images += 1
+
+        # BGR to RGB
         test_img_array = cv2.cvtColor(test_img_array, cv2.COLOR_BGR2RGB)
+        # Resize
         test_img_array = cv2.resize(test_img_array, (100, 100))
         # Normalization
         test_img_array = (test_img_array - np.min(test_img_array)) / (np.max(test_img_array) - np.min(test_img_array))
+        ###############################
         data.append(test_img_array)
     print("Done.")
     print(converted_images, "images got converted from PNG to JPG")
     print("Total test images:", len(data))
     print("------------------------------")
+    return data, image_name
 
 
-def test_model(model, test_data, labels):
+def test_model(model, test_data):
     c = 1
+    labels = []
+    print("Predictions:")
     for img in test_data:
         print("image:", c)
         prediction = model.predict([img])[0]
-        print(
-            f'Basketball: {prediction[0] * 100:.2f}%, Football: {prediction[1] * 100:.2f}%, '
-            f'Rowing: {prediction[2] * 100:.2f}%, Swimming: {prediction[3] * 100:.2f}%, '
-            f'Tennis: {prediction[4] * 100:.2f}%, Yoga:{prediction[5] * 100:.2f}%'
-        )
+        print(f'Basketball: {prediction[0] * 100:.2f}%, Football: {prediction[1] * 100:.2f}%, '
+              f'Rowing: {prediction[2] * 100:.2f}%, Swimming: {prediction[3] * 100:.2f}%, '
+              f'Tennis: {prediction[4] * 100:.2f}%, Yoga:{prediction[5] * 100:.2f}%')
+
         labels.append(prediction.argmax())
         c += 1
+    return labels
+
+
+def augmentation(data: list):
+    for entry in data:  # entry = [image, Tennis]
+        entry: list
+        label = CATEGORIES[entry[1]]
+        img = entry[0]
+        if COUNTS[label] < 480:  # Up Sampling 480
+            Img_Aug = tflearn.ImageAugmentation()
+            ### random Rotation ###
+            Img_Aug.add_random_rotation()
+
+            ### random Rotation with 90 deg ###
+            r = random.randint(1, 3)
+            Img_Aug = tf.image.rot90(img, r)
+            Img_Aug = tf.compat.v1.Session().run(Img_Aug)
+            data.append([Img_Aug, entry[1]])
+
+            ### random flip lift & right ###
+            Img_Aug = tf.image.flip_left_right(img)
+            Img_Aug = tf.compat.v1.Session().run(Img_Aug)
+            data.append([Img_Aug, entry[1]])
+
+            COUNTS[label] += 2
+
+
+def get_x_y_train(loaded_data):
+    X_Train_ = []
+    Y_Train_ = []
+    for img_arr, img_label in loaded_data:
+        X_Train_.append(img_arr)
+        Y_Train_.append(img_label)
+
+    return X_Train_, Y_Train_
 
 
 def show_train_image(x, y, index):
@@ -116,6 +157,12 @@ def show_train_image(x, y, index):
 def show_test_image(arr, index):
     plt.imshow(arr[index], cmap='gray')
     plt.show()
+
+
+def save_data(file_name, data):
+    pickle_file = open(file_name, "wb")
+    pickle.dump(data, pickle_file)
+    pickle_file.close()
 
 
 def retrieve_pickled_data(file_name):
@@ -133,78 +180,43 @@ def generate_csv(classified_images):
         write.writerows(classified_images)
 
 
-def augmentation(data: list):
-    for entry in data:  # x = [image, Tennis]
-        entry: list
-        label = CATEGORIES[entry[1]]
-        img = entry[0]
-        if COUNTS[label] < 480:
-            r = random.randint(1, 3)
-            aug = tf.image.rot90(img, r)
-            aug = tf.compat.v1.Session().run(aug)
-            data.append([aug, entry[1]])
-
-            aug = tf.image.random_brightness(img, 0.5)
-            aug = tf.compat.v1.Session().run(aug)
-            data.append([aug, entry[1]])
-
-            COUNTS[label] += 2
-
-
+### Preparing Training Data ###
 Train_Data_Path = f"{current_dir}\\try"
-Train_Data = []
 
-preprocessed_train_data(Train_Data, Train_Data_Path)
+Train_Data = preprocessed_train_data(Train_Data_Path)
 augmentation(Train_Data)
-# random.shuffle(Train_Data)
 
-X_Train_Data = []
-Y_Train_Data = []
+X_Train_Data, Y_Train_Data = get_x_y_train(Train_Data)
 
-for img_data, img_label in Train_Data:
-    X_Train_Data.append(img_data)
-    Y_Train_Data.append(img_label)
-
-# show_train_image(X_Train_Data, Y_Train_Data, 0)
-
-pickle_out = open("X_Train", "wb")
-pickle.dump(X_Train_Data, pickle_out)
-pickle_out.close()
+save_data("X_Train", X_Train_Data)
 del X_Train_Data
-
-pickle_out = open("Y_Train", "wb")
-pickle.dump(Y_Train_Data, pickle_out)
-pickle_out.close()
+save_data("Y_Train", Y_Train_Data)
 del Y_Train_Data
 
 X_Train = retrieve_pickled_data("X_Train")
 Y_Train = retrieve_pickled_data("Y_Train")
-
+###############################
+### Model ###
 x_train, x_test, y_train, y_test = train_test_split(X_Train, Y_Train, train_size=0.8, shuffle=True)
-
-# model
-Model = Models.inception_v3(x_train, x_test, y_train, y_test)
-Model.save('inception_v3.tfl')
-
+Model = Models.inception_blocks(x_train, x_test, y_train, y_test)
+###############################
+### Preparing Testing Data ###
 Test_Data_Path = f"{current_dir}\\small_test"
-Test_Data = []
-Test_images_Name = []
-Test_images_labels = []
-
-preprocessed_test_data(Test_Data, Test_Data_Path, Test_images_Name)
-
-test_model(Model, Test_Data, Test_images_labels)
+Test_Data, Test_images_Name = preprocessed_test_data(Test_Data_Path)
+###############################
+### Testing the model ###
+Test_images_labels = test_model(Model, Test_Data)
+###############################
+### Generate Results File ###
 print("------------------------------")
+print("Images: ")
 print(Test_images_Name)
 print("------------------------------")
+print("Classes: ")
 print(Test_images_labels)
 print("------------------------------")
 Classified_Images = list(zip(Test_images_Name, Test_images_labels))
-# print(Classified_Images)
 generate_csv(Classified_Images)
-
-pickle_out = open("Test images", "wb")
-pickle.dump(Test_Data, pickle_out)
-pickle_out.close()
-del Test_Data
+###############################
+save_data("Test images", Test_Data)
 # Test = retrieve_pickled_data("Test images")
